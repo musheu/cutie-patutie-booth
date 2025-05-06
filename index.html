@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cutie-Patutie-Booth</title>
+    <style>
+        body {
+            background: linear-gradient(to bottom, #fef6f9, #d4f1f9);
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 0;
+            margin: 0;
+            color: #555;
+        }
+
+        h1 {
+            color: #ffb6c1;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+
+        .booth {
+            background: #fff;
+            border: 4px dashed #ffc0cb;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 90%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        #light-indicator {
+            width: 16px;
+            height: 16px;
+            background-color: #aaa;
+            border-radius: 50%;
+            margin-bottom: 8px;
+            border: 2px solid #666;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s ease;
+        }
+
+        #light-indicator.on {
+            background-color: #ff4d4d;
+            box-shadow: 0 0 10px #ff4d4d;
+        }
+
+        video, canvas {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            aspect-ratio: 4 / 3;
+            margin: 10px;
+            border: 2px solid #ffdde1;
+            border-radius: 10px;
+        }
+
+        .film-strip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            background: #ffffff;
+            padding: 10px;
+            border: 2px solid rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            box-shadow: inset 0 0 10px #bbbbbb;
+            position: relative;
+            padding-bottom: 10px;
+        }
+
+        .film-strip img {
+            width: 240px;
+            height: 180px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 6px;
+        }
+
+        button {
+            background-color: #ffb6c1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 16px;
+            transition: transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 5px #cc8f9d;
+            position: relative;
+        }
+
+        button:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px #cc8f9d;
+        }
+
+        button:hover {
+            background-color: #ff69b4;
+            transform: translateY(2px);
+            box-shadow: 0 3px #cc8f9d;
+        }
+
+        /* Ensure .booth button inherits hover effect. If any specificity issue, add: */
+        .booth button:hover {
+            transform: translateY(2px);
+            box-shadow: 0 3px #cc8f9d;
+        }
+
+        @keyframes printPhoto {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .film-strip img.hidden {
+            display: none;
+        }
+
+        .film-strip.printing {
+            animation: printPhoto 1s ease-in-out forwards;
+            opacity: 0;
+        }
+
+        #timer {
+            font-size: 32px;
+            color: #ff69b4;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        #timer.show {
+            display: block;
+        }
+
+        .flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 999;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .flash.active {
+            opacity: 1;
+        }
+
+        @keyframes slideLeft {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-150%); }
+        }
+
+        .slide-left {
+            animation: slideLeft 1s forwards ease-in-out;
+        }
+
+        .output-layout {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: nowrap;
+            gap: 40px;
+            margin-top: 30px;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            animation: fadeIn 1s ease-in-out forwards;
+        }
+
+        @media (max-width: 700px) {
+            .output-layout {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .film-strip {
+                left: 0;
+            }
+        }
+
+        .draggable-sticker {
+            position: absolute;
+        }
+
+        .rotate-handle {
+            position: absolute;
+            bottom: -12px;
+            right: -12px;
+            width: 16px;
+            height: 16px;
+            background-color: #ffb6c1;
+            border-radius: 50%;
+            cursor: grab;
+            border: 2px solid white;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .sticker-option {
+            font-size: 24px;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .cursor {
+    display: inline-block;
+    font-weight: bold;
+    font-size: 32px;
+    color: #ff69b4;
+    animation: blink 0.7s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+#photoPreview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 12px;
+    background-color: #fdf6e3; /* pastel crème */
+    border-radius: 10px;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1);
+    width: 280px;
+    height: 60px;
+    position: relative;
+}
+
+.preview-slot {
+    width: 60px;
+    height: 45px;
+    background-color: #fff;
+    border: 2px solid #ffebfd;
+    border-radius: 4px;
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+        .preview-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #addImageStickerLabel {
+            background-color: #ffb6d0;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-block;
+            margin-top: 10px;
+            box-shadow: 0 4px #dba8ba;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+        }
+
+        #addImageStickerLabel:hover {
+            background-color: #f4a6bd;
+            transform: translateY(2px);
+            box-shadow: 0 2px #c6889a;
+        }
+
+        .download-container {
+            background-color: #fff9cc;
+            border: 3px dashed #f4d03f;
+            border-radius: 12px;
+            padding: 12px 40px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+
+        .customization-box {
+            background-color: #ffe4f0;
+            border-radius: 14px;
+            padding: 20px;
+            border: 2px solid #ffcde4;
+            box-shadow: inset 0 0 10px rgba(255, 182, 193, 0.3);
+            width: 340px;
+            max-width: 340px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+            background-color: #ffe7f3;
+            transform: scale(0.96);
+            box-shadow: 0 3px #b86b84;
+        }
+    </style>
+</head>
+<body>
+    <h1><span id="logoText"></span><span class="cursor">|</span></h1>
+   <h3 style="font-family: 'Comic Sans MS', cursive; color: #ff69b4; margin-top: -10px; font-size: 18px;">⊹˚₊‧ by Musheu ‧₊˚⊹</h3>
+    <div class="booth">
+        <div id="light-indicator"></div>
+        <p id="instructions" style="font-size: 14px; margin-bottom: 12px; color: #666; max-width: 260px;">
+            Get ready! When you click <strong>Take Photo</strong>, a 4-second countdown starts and a photo will be taken. 
+            After 4 photos, your strip will be printed. You can then add a message, customize colors, add stickers and download it!
+        </p>
+        <div id="timer">4</div>
+        <video id="video" autoplay></video>
+        <br>
+        <button id="snap">Take Photo</button>
+    </div>
+    <div id="photoPreview">
+      <div class="preview-slot" id="slot1"></div>
+      <div class="preview-slot" id="slot2"></div>
+      <div class="preview-slot" id="slot3"></div>
+      <div class="preview-slot" id="slot4"></div>
+    </div>
+    <div class="output-layout">
+        <div class="film-strip" id="filmStrip"></div>
+        <div id="rightPanel" class="right-panel" style="display: none;">
+          <div class="customization-box">
+            <input id="messageInput" type="text" maxlength="26" placeholder="Add a short message..." style="margin-top: 20px; padding: 8px; border-radius: 10px; border: 2px solid #f9c8d9; background-color: #fff0f5; font-size: 14px; width: 240px;">
+            <div id="customizeOptions" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; width: 240px;">
+              <div style="display: flex; justify-content: space-between; width: 240px; margin-top: 10px;">
+                <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                  <label style="font-weight: bold;">Strip Color</label>
+                  <input type="color" id="stripColor" value="#ffffff" style="width: 100px; margin-right: auto; border: 2px solid #f9c8d9; border-radius: 8px; background-color: #fff0f5;">
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                  <label style="font-weight: bold;">Text Color</label>
+                  <input type="color" id="textColor" value="#000000" style="width: 100px; margin-left: auto; border: 2px solid #f9c8d9; border-radius: 8px; background-color: #fff0f5;">
+                </div>
+              </div>
+
+              <label style="font-weight: bold;">Drag a Sticker:</label>
+              <div id="stickerOptions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="sticker-option">🌸</span>
+                <span class="sticker-option">✨</span>
+                <span class="sticker-option">🌷</span>
+                <span class="sticker-option">💗</span>
+                <span class="sticker-option">🦋</span>
+                <span class="sticker-option">🍓</span>
+                <span class="sticker-option">🌈</span>
+                <span class="sticker-option">🧸</span>
+                <span class="sticker-option">🍣</span>
+                <span class="sticker-option">💌</span>
+                <span class="sticker-option">🧋</span>
+                <span class="sticker-option">🎀</span>
+                <label id="addImageStickerLabel" for="imageStickerInput">
+                  Add Image Sticker
+                </label>
+                <input type="file" id="imageStickerInput" accept="image/*" style="display: none;">
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 20px; width: 100%;">
+            <iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/6UkDEBGSbL9HaiUtSIQwJ0?utm_source=generator&autoplay=1" width="100%" height="352" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+          </div>
+          <div class="download-container">
+            <p style="font-size: 14px; color: #555; margin-top: 10px;">Thank you for using the booth ♡ — Musheu</p>
+            <button id="download">Download Strip</button>
+          </div>
+          <div style="text-align: center; font-family: 'Comic Sans MS', cursive; font-size: 13px; color: #ff69b4; margin-top: 20px;">
+            <p style="margin: 4px;">Made with ♡ by Musheu</p>
+            <p style="margin: 4px;">Last updated: May 5th, 2025</p>
+          </div>
+        </div>
+    <div class="flash" id="flash"></div>
+    <audio id="snapSound" src="camera-click.mp3" preload="auto"></audio>
+    <audio id="printSound" src="print-sound.mp3" preload="auto"></audio>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const filmStrip = document.getElementById('filmStrip');
+        const snap = document.getElementById('snap');
+        const timer = document.getElementById('timer');
+        const flash = document.getElementById('flash');
+        const light = document.getElementById('light-indicator');
+        const downloadBtn = document.getElementById('download');
+        const messageInput = document.getElementById('messageInput');
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280;
+        canvas.height = 960;
+        const context = canvas.getContext('2d');
+        let photoCount = 0;
+        const capturedImages = [];
+        const snapSound = document.getElementById('snapSound');
+        const printSound = document.getElementById('printSound');
+        const logoText = document.getElementById('logoText');
+const logo = '⊹.𖥔 Cutie Patutie Booth ⋆｡☆';
+let charIndex = 0;
+
+function typeLogo() {
+    if (charIndex < logo.length) {
+        logoText.textContent += logo.charAt(charIndex);
+        charIndex++;
+        setTimeout(typeLogo, 100); // Typing speed
+    }
+}
+typeLogo();
+
+        // Camera orientation and camera switching logic
+        let useLandscape = true;
+        let useFrontCamera = true;
+
+        // On mobile, default to landscape
+        if (window.innerWidth < 700) {
+            useLandscape = true;
+        }
+
+        function getCameraConstraints() {
+            return {
+                audio: false,
+                video: {
+                    facingMode: "user",
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            };
+        }
+
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia(getCameraConstraints())
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.setAttribute('playsinline', true);
+                })
+                .catch(err => {
+                    console.error("Error accessing camera:", err);
+                });
+        }
+
+        startCamera();
+
+        // Old direct getUserMedia call removed, now handled by startCamera()
+
+snap.addEventListener('click', () => {
+    snap.style.display = 'none'; // Hide the button after click
+    document.getElementById('instructions').style.display = 'none';
+    // document.getElementById('toggleOrientation').style.display = 'inline-block';
+    light.classList.add('on');
+    timer.classList.add('show');
+
+    function takePhoto() {
+        flash.classList.add('active');
+        snapSound.currentTime = 0;
+        snapSound.play();
+        setTimeout(() => flash.classList.remove('active'), 100);
+        // --- Preserve aspect ratio when drawing video frame ---
+        const videoAspect = video.videoWidth / video.videoHeight;
+        const canvasAspect = canvas.width / canvas.height;
+        let sx, sy, sWidth, sHeight;
+        if (videoAspect > canvasAspect) {
+            sHeight = video.videoHeight;
+            sWidth = sHeight * canvasAspect;
+            sx = (video.videoWidth - sWidth) / 2;
+            sy = 0;
+        } else {
+            sWidth = video.videoWidth;
+            sHeight = sWidth / canvasAspect;
+            sx = 0;
+            sy = (video.videoHeight - sHeight) / 2;
+        }
+        context.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+        // --- end aspect ratio preserve ---
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        img.classList.add('hidden');
+        capturedImages.push(img);
+        // Add preview thumbnail if less than 4 photos
+        if (photoCount < 4) {
+            const slot = document.getElementById(`slot${photoCount + 1}`);
+            const thumb = document.createElement('img');
+            thumb.src = img.src;
+            slot.appendChild(thumb);
+        }
+        photoCount++;
+
+        // Show the button during the photo sequence
+        // document.getElementById('toggleOrientation').style.display = 'inline-block';
+
+        if (photoCount === 4) {
+            // Hide the preview container when done
+            document.getElementById('photoPreview').style.display = 'none';
+            printSound.currentTime = 0;
+            printSound.play();
+            document.querySelector('.booth').style.display = 'none';
+            document.body.style.transform = 'scale(0.85)';
+            document.body.style.transformOrigin = 'top center';
+            filmStrip.classList.add('printing');
+            capturedImages.forEach((img) => {
+                img.classList.remove('hidden');
+                filmStrip.appendChild(img);
+            });
+            filmStrip.classList.add('slide-left');
+            // Hide the footer when showing the printed strip page
+            document.getElementById('footerContainer').style.display = 'none';
+            // Show rightPanel (and thus the Spotify iframe) after strip is shown, so the music auto-plays if allowed.
+            setTimeout(() => {
+                document.getElementById('rightPanel').style.display = 'flex';
+            }, 1000);
+            // Now hide the toggleOrientation button after all 4 photos are taken
+            // document.getElementById('toggleOrientation').style.display = 'none';
+        }
+    }
+
+    let countdown = 4;
+    timer.textContent = countdown;
+
+    const countdownInterval = setInterval(() => {
+        countdown--;
+        timer.textContent = countdown;
+        if (countdown === 0) {
+            takePhoto();
+            countdown = 4;
+        }
+        if (photoCount === 4) {
+            clearInterval(countdownInterval);
+            timer.textContent = '';
+        }
+    }, 1000);
+});
+
+        function updatePreview() {
+            const message = messageInput.value;
+            const textColor = document.getElementById('textColor').value;
+            const stripColor = document.getElementById('stripColor').value;
+
+            filmStrip.style.backgroundColor = stripColor;
+            filmStrip.style.border = '2px solid rgba(0, 0, 0, 0.4)';
+
+            // Update or create the message element
+            let messageElement = document.getElementById('stripMessage');
+            if (!messageElement) {
+                messageElement = document.createElement('p');
+                messageElement.id = 'stripMessage';
+                messageElement.style.marginTop = '12px';
+                messageElement.style.marginBottom = '4px';
+                messageElement.style.fontSize = '16px';
+                messageElement.style.fontFamily = 'Comic Sans MS, cursive';
+                messageElement.style.textAlign = 'center';
+                filmStrip.appendChild(messageElement);
+            }
+            messageElement.textContent = message;
+            messageElement.style.color = textColor;
+        }
+
+        document.querySelectorAll('.sticker-option').forEach(sticker => {
+            sticker.addEventListener('click', () => {
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'absolute';
+                wrapper.style.left = '50px';
+                wrapper.style.top = '50px';
+                wrapper.style.display = 'inline-block';
+                wrapper.style.transformOrigin = 'center center';
+
+                const stickerSpan = document.createElement('span');
+                stickerSpan.textContent = sticker.textContent;
+                stickerSpan.style.fontSize = '32px';
+                stickerSpan.style.cursor = 'move';
+                stickerSpan.style.userSelect = 'none';
+
+                const rotateHandle = document.createElement('div');
+                rotateHandle.className = 'rotate-handle';
+
+                wrapper.appendChild(stickerSpan);
+                wrapper.appendChild(rotateHandle);
+
+                // --- Add delete button after rotate handle for emoji stickers ---
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '✖';
+                deleteButton.style.position = 'absolute';
+                deleteButton.style.top = '-10px';
+                deleteButton.style.right = '-10px';
+                deleteButton.style.transform = '';
+                deleteButton.style.background = 'transparent';
+                deleteButton.style.color = '#ff6b6b';
+                deleteButton.style.border = 'none';
+                deleteButton.style.borderRadius = '50%';
+                deleteButton.style.width = '20px';
+                deleteButton.style.height = '20px';
+                deleteButton.style.cursor = 'pointer';
+                deleteButton.style.fontSize = '14px';
+                deleteButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+                deleteButton.addEventListener('click', () => {
+                    wrapper.remove();
+                });
+                wrapper.appendChild(deleteButton);
+                // --- end add delete button ---
+
+                wrapper.classList.add('draggable-sticker');
+                filmStrip.appendChild(wrapper);
+
+                let offsetX, offsetY;
+                const drag = (e) => {
+                    wrapper.style.left = `${e.clientX - offsetX}px`;
+                    wrapper.style.top = `${e.clientY - offsetY}px`;
+                };
+                const stopDrag = () => {
+                    document.removeEventListener('mousemove', drag);
+                    document.removeEventListener('mouseup', stopDrag);
+                };
+                stickerSpan.addEventListener('mousedown', function (e) {
+                    offsetX = e.clientX - wrapper.offsetLeft;
+                    offsetY = e.clientY - wrapper.offsetTop;
+                    document.addEventListener('mousemove', drag);
+                    document.addEventListener('mouseup', stopDrag);
+                });
+
+                // Touch support for dragging
+                stickerSpan.addEventListener('touchstart', function (e) {
+                    const touch = e.touches[0];
+                    offsetX = touch.clientX - wrapper.offsetLeft;
+                    offsetY = touch.clientY - wrapper.offsetTop;
+                    document.addEventListener('touchmove', dragTouch);
+                    document.addEventListener('touchend', stopDragTouch);
+                });
+                const dragTouch = (e) => {
+                    const touch = e.touches[0];
+                    wrapper.style.left = `${touch.clientX - offsetX}px`;
+                    wrapper.style.top = `${touch.clientY - offsetY}px`;
+                };
+                const stopDragTouch = () => {
+                    document.removeEventListener('touchmove', dragTouch);
+                    document.removeEventListener('touchend', stopDragTouch);
+                };
+
+                let startAngle, centerX, centerY;
+                const rotate = (e) => {
+                    const dx = e.clientX - centerX;
+                    const dy = e.clientY - centerY;
+                    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                    wrapper.style.transform = `rotate(${angle}deg)`;
+                };
+                const stopRotate = () => {
+                    document.removeEventListener('mousemove', rotate);
+                    document.removeEventListener('mouseup', stopRotate);
+                };
+                rotateHandle.addEventListener('mousedown', function (e) {
+                    const rect = wrapper.getBoundingClientRect();
+                    centerX = rect.left + rect.width / 2;
+                    centerY = rect.top + rect.height / 2;
+                    document.addEventListener('mousemove', rotate);
+                    document.addEventListener('mouseup', stopRotate);
+                    e.stopPropagation();
+                });
+
+                // Touch support for rotating
+                rotateHandle.addEventListener('touchstart', function (e) {
+                    const touch = e.touches[0];
+                    const rect = wrapper.getBoundingClientRect();
+                    centerX = rect.left + rect.width / 2;
+                    centerY = rect.top + rect.height / 2;
+                    document.addEventListener('touchmove', rotateTouch);
+                    document.addEventListener('touchend', stopRotateTouch);
+                    e.stopPropagation();
+                });
+                const rotateTouch = (e) => {
+                    const touch = e.touches[0];
+                    const dx = touch.clientX - centerX;
+                    const dy = touch.clientY - centerY;
+                    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                    wrapper.style.transform = `rotate(${angle}deg)`;
+                };
+                const stopRotateTouch = () => {
+                    document.removeEventListener('touchmove', rotateTouch);
+                    document.removeEventListener('touchend', stopRotateTouch);
+                };
+            });
+        });
+
+        document.getElementById('stripColor').addEventListener('input', updatePreview); 
+        document.getElementById('textColor').addEventListener('input', updatePreview);
+        
+        // Allow image stickers
+        document.getElementById('imageStickerInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.position = 'absolute';
+                    wrapper.style.left = '50px';
+                    wrapper.style.top = '50px';
+                    wrapper.style.display = 'inline-block';
+                    wrapper.style.transformOrigin = 'center center';
+                    // Allow resizing and maintain square aspect ratio
+                    wrapper.style.resize = 'both';
+                    wrapper.style.overflow = 'hidden';
+                    wrapper.style.aspectRatio = '1 / 1';
+                    wrapper.style.width = '80px';
+                    wrapper.style.height = '80px';
+                    wrapper.style.minWidth = '40px';
+                    wrapper.style.minHeight = '40px';
+                    wrapper.classList.add('draggable-sticker');
+
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    // --- Updated image styling to preserve aspect ratio and prevent cropping ---
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '100%';
+                    img.style.width = 'auto';
+                    img.style.height = 'auto';
+                    img.style.objectFit = 'contain';
+                    img.style.display = 'block';
+                    img.style.margin = 'auto';
+                    // --- end updated image styling ---
+                    img.style.cursor = 'move';
+                    img.draggable = false;
+
+                    wrapper.appendChild(img);
+                    filmStrip.appendChild(wrapper);
+
+                    // Add rotate handle and rotation logic
+                    const rotateHandle = document.createElement('div');
+                    rotateHandle.className = 'rotate-handle';
+                    wrapper.appendChild(rotateHandle);
+
+                    // --- Add delete button after rotate handle ---
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = '✖';
+                    deleteButton.style.position = 'absolute';
+                    deleteButton.style.top = '-10px';
+                    deleteButton.style.right = '-10px';
+                    deleteButton.style.background = '#ff6b6b';
+                    deleteButton.style.color = 'white';
+                    deleteButton.style.border = 'none';
+                    deleteButton.style.borderRadius = '50%';
+                    deleteButton.style.width = '20px';
+                    deleteButton.style.height = '20px';
+                    deleteButton.style.cursor = 'pointer';
+                    deleteButton.style.fontSize = '14px';
+                    deleteButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+                    deleteButton.addEventListener('click', () => {
+                        wrapper.remove();
+                    });
+                    wrapper.appendChild(deleteButton);
+                    // --- end add delete button ---
+
+                    let centerX, centerY;
+                    const rotate = (e) => {
+                        const dx = e.clientX - centerX;
+                        const dy = e.clientY - centerY;
+                        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                        wrapper.style.transform = `rotate(${angle}deg)`;
+                    };
+                    const stopRotate = () => {
+                        document.removeEventListener('mousemove', rotate);
+                        document.removeEventListener('mouseup', stopRotate);
+                    };
+                    rotateHandle.addEventListener('mousedown', function (e) {
+                        const rect = wrapper.getBoundingClientRect();
+                        centerX = rect.left + rect.width / 2;
+                        centerY = rect.top + rect.height / 2;
+                        document.addEventListener('mousemove', rotate);
+                        document.addEventListener('mouseup', stopRotate);
+                        e.stopPropagation();
+                    });
+
+                    // Touch support for rotating
+                    rotateHandle.addEventListener('touchstart', function (e) {
+                        const touch = e.touches[0];
+                        const rect = wrapper.getBoundingClientRect();
+                        centerX = rect.left + rect.width / 2;
+                        centerY = rect.top + rect.height / 2;
+                        document.addEventListener('touchmove', rotateTouch);
+                        document.addEventListener('touchend', stopRotateTouch);
+                        e.stopPropagation();
+                    });
+                    const rotateTouch = (e) => {
+                        const touch = e.touches[0];
+                        const dx = touch.clientX - centerX;
+                        const dy = touch.clientY - centerY;
+                        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                        wrapper.style.transform = `rotate(${angle}deg)`;
+                    };
+                    const stopRotateTouch = () => {
+                        document.removeEventListener('touchmove', rotateTouch);
+                        document.removeEventListener('touchend', stopRotateTouch);
+                    };
+
+                    let offsetX, offsetY;
+                    const drag = (e) => {
+                        wrapper.style.left = `${e.clientX - offsetX}px`;
+                        wrapper.style.top = `${e.clientY - offsetY}px`;
+                    };
+                    const stopDrag = () => {
+                        document.removeEventListener('mousemove', drag);
+                        document.removeEventListener('mouseup', stopDrag);
+                    };
+                    img.addEventListener('mousedown', function (e) {
+                        offsetX = e.clientX - wrapper.offsetLeft;
+                        offsetY = e.clientY - wrapper.offsetTop;
+                        document.addEventListener('mousemove', drag);
+                        document.addEventListener('mouseup', stopDrag);
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const scaleFactor = 3;
+            const stripCanvas = document.createElement('canvas');
+            // Use offsetWidth/offsetHeight to get the printed (box model) size of the strip
+            const width = filmStrip.offsetWidth;
+            let height = filmStrip.offsetHeight;
+
+            // Always reserve a fixed height for the message area, whether present or not
+            const message = messageInput.value;
+            const fixedMessageHeight = 28; // consistent height space reserved for message
+            height -= fixedMessageHeight;
+
+            // Adjusted canvas size: increase left/right padding, add a bit of padding back at the bottom
+            stripCanvas.width = (width - 9) * scaleFactor; // slightly increase left/right padding
+            stripCanvas.height = (height + 10) * scaleFactor; // added more padding at the bottom for extra space
+            const ctx = stripCanvas.getContext('2d');
+            const stripColor = document.getElementById('stripColor').value;
+            const textColor = document.getElementById('textColor').value;
+
+            ctx.fillStyle = stripColor;
+            const radius = 10 * scaleFactor; // slightly curved corners
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(stripCanvas.width - radius, 0);
+            ctx.quadraticCurveTo(stripCanvas.width, 0, stripCanvas.width, radius);
+            ctx.lineTo(stripCanvas.width, stripCanvas.height - radius);
+            ctx.quadraticCurveTo(stripCanvas.width, stripCanvas.height, stripCanvas.width - radius, stripCanvas.height);
+            ctx.lineTo(radius, stripCanvas.height);
+            ctx.quadraticCurveTo(0, stripCanvas.height, 0, stripCanvas.height - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fill();
+
+
+            const imageWidth = 240 * scaleFactor;
+            const imageHeight = 180 * scaleFactor;
+            // Center the image block horizontally on the canvas
+            const imageX = (stripCanvas.width - imageWidth) / 2;
+            const spacing = 4 * scaleFactor;
+            const topOffset = 10 * scaleFactor;
+
+            capturedImages.forEach((img, i) => {
+                const image = new Image();
+                image.src = img.src;
+                const imageY = topOffset + i * (imageHeight + spacing);
+                ctx.drawImage(
+                    image,
+                    imageX,
+                    imageY,
+                    imageWidth,
+                    imageHeight
+                );
+            });
+
+            for (let i = 0; i < 4; i++) {
+                ctx.strokeStyle = stripColor;
+                ctx.lineWidth = 15; // thinner border
+                const imageY = topOffset + i * (imageHeight + spacing);
+                ctx.beginPath();
+                const cornerRadius = 10 * scaleFactor;
+                ctx.moveTo(imageX + cornerRadius, imageY);
+                ctx.lineTo(imageX + imageWidth - cornerRadius, imageY);
+                ctx.quadraticCurveTo(imageX + imageWidth, imageY, imageX + imageWidth, imageY + cornerRadius);
+                ctx.lineTo(imageX + imageWidth, imageY + imageHeight - cornerRadius);
+                ctx.quadraticCurveTo(imageX + imageWidth, imageY + imageHeight, imageX + imageWidth - cornerRadius, imageY + imageHeight);
+                ctx.lineTo(imageX + cornerRadius, imageY + imageHeight);
+                ctx.quadraticCurveTo(imageX, imageY + imageHeight, imageX, imageY + imageHeight - cornerRadius);
+                ctx.lineTo(imageX, imageY + cornerRadius);
+                ctx.quadraticCurveTo(imageX, imageY, imageX + cornerRadius, imageY);
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            const filmStripRect = filmStrip.getBoundingClientRect();
+            const displayWidth = filmStrip.offsetWidth;
+            const displayHeight = filmStrip.offsetHeight;
+            const canvasWidth = stripCanvas.width;
+            const canvasHeight = stripCanvas.height;
+            const stickers = document.querySelectorAll('.draggable-sticker');
+            stickers.forEach(sticker => {
+                const span = sticker.querySelector('span');
+                if (span) {
+                    // Compute relative sticker position based on offsetLeft/Top and filmStrip size
+                    const relX = sticker.offsetLeft / filmStrip.offsetWidth;
+                    const relY = sticker.offsetTop / filmStrip.offsetHeight;
+                    const relH = sticker.offsetHeight / filmStrip.offsetHeight;
+
+                    // Adjusted font size and position for better alignment/printing
+                    const fontSize = relH * stripCanvas.height * 0.8; // slightly smaller than before
+                    const x = (relX * stripCanvas.width) + (18 * scaleFactor); // move more to the right
+                    const y = (relY * stripCanvas.height) + (20 * scaleFactor);  // move even more down
+
+                    ctx.save();
+                    ctx.translate(x, y);
+
+                    const transform = window.getComputedStyle(sticker).transform;
+                    if (transform && transform !== 'none') {
+                        const values = transform.split('(')[1].split(')')[0].split(',');
+                        const a = parseFloat(values[0]);
+                        const b = parseFloat(values[1]);
+                        const angle = Math.atan2(b, a);
+                        ctx.rotate(angle);
+                    }
+
+                    ctx.font = `${fontSize}px Comic Sans MS, cursive`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(span.textContent, 0, fontSize * 0.3);
+                    ctx.restore();
+                } else {
+                    const img = sticker.querySelector('img');
+                    if (img) {
+                        const relX = sticker.offsetLeft / filmStrip.offsetWidth;
+                        const relY = sticker.offsetTop / filmStrip.offsetHeight;
+                        const relW = sticker.offsetWidth / filmStrip.offsetWidth;
+                        const relH = sticker.offsetHeight / filmStrip.offsetHeight;
+
+                        const x = relX * stripCanvas.width;
+                        const y = relY * stripCanvas.height;
+                        const w = relW * stripCanvas.width;
+                        const h = relH * stripCanvas.height;
+
+                        ctx.save();
+                        ctx.translate(x + w / 2, y + h / 2);
+
+                        const transform = window.getComputedStyle(sticker).transform;
+                        if (transform && transform !== 'none') {
+                            const values = transform.split('(')[1].split(')')[0].split(',');
+                            const a = parseFloat(values[0]);
+                            const b = parseFloat(values[1]);
+                            const angle = Math.atan2(b, a);
+                            ctx.rotate(angle);
+                        }
+
+                        const image = new window.Image();
+                        image.src = img.src;
+                        ctx.drawImage(image, -w / 2, -h / 2, w, h);
+                        ctx.restore();
+                    }
+                }
+            });
+
+            if (message) {
+                ctx.fillStyle = textColor;
+                ctx.font = `${16 * scaleFactor}px Comic Sans MS, cursive`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(message, stripCanvas.width / 2, stripCanvas.height - 30 * scaleFactor);
+            }
+
+            const link = document.createElement('a');
+            link.download = 'photostrip.png';
+            link.href = stripCanvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+    <script>
+      // Volume control for all audio elements
+      const volumeSlider = document.getElementById('volumeSlider');
+      const allAudios = document.querySelectorAll('audio');
+
+      if (volumeSlider) {
+          volumeSlider.addEventListener('input', () => {
+              const volume = parseFloat(volumeSlider.value);
+              allAudios.forEach(audio => {
+                  audio.volume = volume;
+              });
+          });
+      }
+    </script>
+ </script>
+<div id="footerContainer">
+  <footer style="text-align: center; font-family: 'Comic Sans MS', cursive; font-size: 13px; color: #ff69b4; margin-top: 40px;">
+    <p style="margin: 4px;">Made with ♡ by Musheu</p>
+    <p style="margin: 4px;">Last updated: May 5th, 2025</p>
+  </footer>
+</div>
+</body>
+</html>
